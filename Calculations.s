@@ -1,6 +1,6 @@
 #include <xc.inc>
     
-global	Divide_By_20, Divide_By_Ten, Load_HRZ_Table, Divide_By_Hundred,  Determine_HRZ, IIR_Filter
+global	Divide_By_20, Divide_By_Ten, Load_HRZ_Table, Divide_By_Hundred,  Determine_HRZ, IIR_Filter, Sixteen_Division
 global	measured_heart_rate_zone_address, heart_rate_zone_address
 ; this includes subroutines for calculations: e.g. max heart rate calculation, boundary calculations
 psect	udata_acs
@@ -24,6 +24,10 @@ x1x2x3L:ds	1
 myDen_low:ds	1
 myQuo:ds	1
 myRem:ds	1
+    
+Num_H:ds	1
+Num_L:ds	1
+Heart_Rate:ds	1
   
 
 psect	calculations_code,class=CODE
@@ -94,16 +98,6 @@ Loop:
 	MOVWF	INDF0
 	INCF	FSR0
 	
-;	MOVWF	EEDATA		; move data to EE
-;
-;	MOVLW	0x55
-;	MOVWF	EECON2		
-;	MOVLW	0xAA
-;	MOVWF	EECON2
-;	
-;	BSF	EECON1, 1	; to write data, bit 1  = WR
-;	BTFSC	EECON1, 1
-;	bra	$-2		; wait for write to complete
 	INCF	EEADR, 1	; Increment address and save back to EEADR
 	
 	MOVFF	EEADR, WREG	; Routine to check if the end has been reached
@@ -115,7 +109,6 @@ Loop:
 	bra	End_Write
 End_Write:
 	; Continue on with the rest of the code
-	;BCF	EECON1, 2	; disenable writing function
 	MOVLW	0xFF
 	MOVWF	PORTD
 	RETURN
@@ -162,8 +155,6 @@ IIR_Filter:
 	MOVFF	PRODH, WREG
 	ADDWFC	x1x2H, 0
 	MOVWF	x1x2x3H		    ; contains higher byte of sum
-	
-	; divide by 4
 	
 	MOVLW   3			; Think this needs to be n - 1, where n is the denominator??
 	MOVWF   myDen_low		; divide by 4 to find the average
@@ -291,5 +282,51 @@ Division_Done_Hundred:
 	RETURN
 DivisionError_Hundred:
 	RETURN
+
+Sixteen_Division:
+	MOVLW	0xEA
+	MOVWF	Num_H
+	MOVLW	0x60
+	MOVWF	Num_L		; initiate numerator to 60000 ms
+	MOVLW	0
+	MOVWF	Heart_Rate		; initialise quotient
+Check_for_zero:
+	MOVLW	0
+	CPFSEQ	PRODL
+	bra	High_byte_check
+	CPFSEQ	PRODH
+	bra	High_byte_check
+	bra	End_Sixteen_Division
+High_byte_check:
+	MOVFF	PRODH, WREG
+	CPFSGT	Num_H
+	bra	End_Sixteen_Division	; when high byte of denominator is greater than numerator
+	bra	Low_byte_check		
+Low_byte_check:
+	MOVFF	PRODL, WREG
+	CPFSGT	Num_L
+	bra	Sixteen_Borrow	
+	bra	Sixteen_Subtraction
+Sixteen_Subtraction:
+	MOVFF	PRODL, WREG
+	SUBWF	Num_L, 1
+	MOVFF	PRODH, WREG
+	SUBWF	Num_H, 1
+	INCF	Heart_Rate, 1
+	;MOVFF	Heart_Rate, PORTB
+	bra	High_byte_check
+Sixteen_Borrow:
+	DECF	Num_H, 1		; borrow from Num_H
+	MOVFF	PRODH, WREG
+	CPFSGT	Num_H
+	bra	End_Sixteen_Division
+	bra	Sixteen_Subtraction
+End_Sixteen_Division:	
+	;MOVFF	Heart_Rate, PORTC
+	MOVFF	Heart_Rate, WREG
+	; move results into results register pair
+	return	    ; return with Heart Rate in WREG
+	
+	
 	
 	

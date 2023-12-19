@@ -19,7 +19,6 @@
       <itemPath>Keypad.s</itemPath>
       <itemPath>Digit_Reader.s</itemPath>
       <itemPath>Calculations.s</itemPath>
-      <itemPath>RRInterval.s</itemPath>
       <itemPath>Timer.s</itemPath>
       <itemPath>Message.s</itemPath>
     </logicalFolder>

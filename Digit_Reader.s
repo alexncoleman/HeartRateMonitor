@@ -2,7 +2,7 @@
 
 ; This includes the subroutine to decode the input from the keypad for the two-digit age input
     
-global	Decode_First_Digit, Decode_Second_Digit, Read_Age_Input_Find_HR_Max
+global	Read_Age_Input_Find_HR_Max
 extrn	Keypad_READ
 extrn	delay_ms
 extrn	LCD_Write_Message

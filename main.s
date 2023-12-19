@@ -1,20 +1,15 @@
 #include <xc.inc>
 
-extrn	UART_Setup, UART_Transmit_Message, UART_Transmit_Byte  ; external subroutines
-extrn	LCD_Setup, Clear_LCD, LCD_Send_Byte_HR, LCD_Send_Byte_HRZ, LCD_Write_Message, LCD_Write_Hex, LCD_clear, LCD_shift
-extrn	Keypad_INIT, Keypad_READ, delay_ms
-extrn	Decode_First_Digit, Decode_Second_Digit, Read_Age_Input_Find_HR_Max
-extrn	Divide_By_20, Divide_By_Ten, Load_HRZ_Table, Determine_HRZ, IIR_Filter
-extrn	Timer_Setup, Divide_By_Hundred
-extrn	no_overflow, overflow, Sixteen_Division
-extrn	Heart_Rate_Zone_Msg, Heart_Rate_Msg, Welcome_Msg
+extrn	UART_Setup, UART_Transmit_Message, UART_Transmit_Byte	; UART subroutines
+extrn	LCD_Setup, LCD_Write_Message, LCD_clear, LCD_shift	; LCD subroutine
+extrn	Keypad_INIT, Keypad_READ				; Keypad subroutines
+extrn	Read_Age_Input_Find_HR_Max				; Decoding Keypad Input subroutines
+extrn	Divide_By_Ten, Load_HRZ_Table, Determine_HRZ, IIR_Filter; Calculations
+extrn	Timer_Setup, Divide_By_Hundred, Sixteen_Division
+extrn	Heart_Rate_Zone_Msg, Heart_Rate_Msg, Welcome_Msg	; Messages displayed on LCD
 global	hr_msg, hrz_msg, welcome_msg, age_address_1, age_address_2, heart_rate_zone_address, measured_heart_rate_zone_address
 	
 psect	udata_acs   ; reserve data space in access ram
-counter:    ds	1    ; reserve one byte for a counter variable
-delay_count:ds	1    ; reserve one byte for counter in the delay routine
-Measured_Zone:ds	1
-Time_Counter:ds	1
 OverflowCounter_1:ds	1
 OverflowCounter_2:ds	1
 Count:ds	1
@@ -24,12 +19,6 @@ single_digit:ds	1
 HR_Zone:ds	1
 HR_Measured:ds	1   ; reserve one byte for measured HR value from sensor
 HR_max: ds	1   ; the maximum heart rate calculated froma ge
-HR_max_20: ds	1   ; the quotient of HR_max divided by 20
-LOOP_COUNTER:ds	1   ; loop counter for HRZ boundary value calculations
-TABLE_INDEX_DIFF:ds 1	; variable used to check end of loop condition
-STATUS_CHECK:ds	1   ; use this in loop to check if the end of loop as been reached
-    TABLE_START_ADDRESS EQU 0xA0    ; table start address for HRZ boundary values
-    TABLE_SIZE EQU 8		    ; this value needs to be n+1, where n is how many times you want to read/write the table
 hr_msg		EQU 0xE0
 hrz_msg		EQU 0xF0
 measured_heart_rate_address EQU 0xD0
@@ -218,12 +207,6 @@ Increase_Interrupt:
 Increment_OFC2:
 	INCF	OverflowCounter_2, 1
 	;MOVFF	OverflowCounter_2, WREG
-	return
-    
-Find_HR_from_Overflow:
-	MOVFF	Count, WREG	; move count to W for multiplication
-	MULLW	8		; multiply counter with period of timer0, result stored in PRODH:PRODL
-	call	Sixteen_Division; denominator stored in PRODH, PRODL
 	return
 	
 Load_Measured_Heart_Rate_Zone:
