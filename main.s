@@ -4,10 +4,13 @@ extrn	UART_Setup, UART_Transmit_Message, UART_Transmit_Byte	; UART subroutines
 extrn	LCD_Setup, LCD_Write_Message, LCD_clear, LCD_shift	; LCD subroutine
 extrn	Keypad_INIT, Keypad_READ				; Keypad subroutines
 extrn	Read_Age_Input_Find_HR_Max				; Decoding Keypad Input subroutines
-extrn	Divide_By_Ten, Load_HRZ_Table, Determine_HRZ, IIR_Filter; Calculations
-extrn	Timer_Setup, Divide_By_Hundred, Sixteen_Division
-extrn	Heart_Rate_Zone_Msg, Heart_Rate_Msg, Welcome_Msg	; Messages displayed on LCD
-global	hr_msg, hrz_msg, welcome_msg, age_address_1, age_address_2, heart_rate_zone_address, measured_heart_rate_zone_address
+extrn	Divide_By_Ten, Load_HRZ_Table, Determine_HRZ, IIR_Filter, Divide_By_Hundred, Sixteen_Division  ; Calculations
+extrn	Timer_Setup, Increase_Interrupt				; Timer subroutines
+extrn	Heart_Rate_Zone_Msg, Heart_Rate_Msg, Welcome_Msg, Load_Measured_Heart_Rate_Zone, Load_Measured_Heart_Rate, Write_to_FSR	; Messages displayed on LCD
+    
+global	hr_msg, hrz_msg, welcome_msg, age_address_1, age_address_2, heart_rate_zone_address, measured_heart_rate_zone_address, measured_heart_rate_address
+global	OverflowCounter_1, OverflowCounter_2
+global	Count, ten_digit, hundred_digit, HR_Zone
 	
 psect	udata_acs   ; reserve data space in access ram
 OverflowCounter_1:ds	1
@@ -33,16 +36,9 @@ myArray:    ds 0x80 ; reserve 128 bytes for message data
 
 psect	edata	    ; store data in EEPROM, so can read and write
 ;ORG 0x1000 
-	; ******* myTable, data in programme memory, and its length *****
+	; ******* myTable containing multipliers to calculate heart rate zones, in EEPROM *****
 Database:
 	DB  20, 18, 17, 15, 13, 11
-	align	2
-
-psect	data    
-HRMessage:
-	db	'H','R','=',0x0a
-					; message, plus carriage return
-	myTable_l   EQU	4	; length of data
 	align	2
 
 psect	code, abs	
@@ -53,9 +49,6 @@ Timer_Interrupt:org  0x0008
 	btfss   TMR0IF
 	retfie	f
 	call	Increase_Interrupt
-	bcf     TMR0IF
-	movlw   10000011B	; Fcyc/128 = 125 KHz
-	movwf   T0CON, A
 	retfie	f
 	
 	; ******* Programme FLASH read Setup Code ***********************
@@ -196,67 +189,6 @@ Signal_Detected:
 	
 	
 	bra	Detection_Loop
-
-
-Increase_Interrupt:
-	INCF	OverflowCounter_1, 1
-	MOVFF	OverflowCounter_1, WREG
-	MOVFF	OverflowCounter_1, LATH
-	BC	Increment_OFC2		; Branch if carry
-	return
-Increment_OFC2:
-	INCF	OverflowCounter_2, 1
-	;MOVFF	OverflowCounter_2, WREG
-	return
-	
-Load_Measured_Heart_Rate_Zone:
-	movwf	HR_Zone
-	
-	movlw	measured_heart_rate_zone_address
-	movwf	FSR0
-	
-	movff	HR_Zone, WREG
-	addlw	'0'
-	call	Write_to_FSR
-	return
-	
-Load_Measured_Heart_Rate:      ; enter with measured heart rate in WREG
-	movwf	Count
-	
-	movlw	measured_heart_rate_address
-	movwf	FSR0
-	
-	movff	Count, WREG
-	call	Divide_By_Hundred   ; return with quotient in WREG
-	movwf	hundred_digit
-	movff	hundred_digit, WREG
-	addlw	'0'
-	call	Write_to_FSR
-	movff	hundred_digit, WREG
-	mullw	100		   ; subtract hundred digit
-	movff	PRODL, WREG	   
-	subwf	Count, 1	    ; Count - PRODL (the hundred digit), store in Count
-	
-	movff	Count, WREG
-	call	Divide_By_Ten
-	movwf	ten_digit
-	movff	ten_digit, WREG
-	addlw	'0'
-	call	Write_to_FSR
-	movff	ten_digit, WREG
-	mullw	10
-	movff	PRODL, WREG
-	subwf	Count, 1
-	
-	movff	Count, WREG
-	addlw	'0'
-	call	Write_to_FSR
-	return
-		
-Write_to_FSR:
-	movwf	INDF0
-	incf	FSR0
-	return
 	
 	
 	end	rst
