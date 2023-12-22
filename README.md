@@ -1,8 +1,9 @@
-# Microprocessors
-Repository for Physics Year 3 microprocessors lab
+# Microprocessors Lab Project: Heart Rate and Heart Rate Zone Monitor
 
-A simple assembly program for PIC18 microprocessor
+Repository for Physics Year 3 microprocessors lab project for Alex Coleman and Minnie Wang (2023)
 
-Reads a table (message) from programme memory to data memory
+An assembly program for PIC18 microprocessor capable of providing real-time heart rate and heart rate zone informatiuon on a LCD display. 
 
-Initialises UART and writes a message (the table) to UART 
+The data is also recorded in a text file, via UART.
+
+Hardware requirements: keypad, Grove ear-clip heart rate sensor, LCD
